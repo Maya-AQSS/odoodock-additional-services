@@ -1,0 +1,10 @@
+#######################################################
+# servicios a arrancar / services to be started up
+########################################################
+
+# servicios adicionales disponibles / additional available services:
+
+# Array de servicios
+ADSSERVICES=(
+  keycloak-webhook
+)

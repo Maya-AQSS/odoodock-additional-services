@@ -1,0 +1,40 @@
+ 
+services:
+
+  #####################################
+  ## KEYCLOAK WEBHOOK #################
+  #####################################
+  keycloak-webhook:
+    build:
+      context: ./[ads]/maya-keycloak-webhook
+
+    ports:
+      - "${KEYCLOAK_WEBHOOK_PORT:-8099}:8000"
+
+    environment:
+      # Conexión RabbitMQ
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=${RABBIT_PORT}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASSWORD=${RABBITMQ_DEFAULT_PASSWORD}
+      - RABBITMQ_VHOST=${RABBITMQ_KEYCLOAK_VHOST:-maya_sync}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_KEYCLOAK_EXCHANGE:-ex.keycloak.events}
+      # Secreto compartido con Keycloak para autenticar las llamadas
+      - KEYCLOAK_WEBHOOK_SECRET=${KEYCLOAK_WEBHOOK_SECRET}
+      # Nivel de log: INFO en producción, DEBUG para ver payloads completos
+      - LOG_LEVEL=${KEYCLOAK_WEBHOOK_LOG_LEVEL:-INFO}
+
+    depends_on:
+      - rabbitmq
+      - keycloak
+
+    restart: unless-stopped
+
+    networks:
+      - traefik_network
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak-webhook.rule=Host(`keycloak-webhook.local`)"
+      - "traefik.http.routers.keycloak-webhook.entrypoints=web"
+      - "traefik.http.services.keycloak-webhook.loadbalancer.server.port=8000"
