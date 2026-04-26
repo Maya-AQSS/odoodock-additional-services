@@ -43,7 +43,7 @@ services:
   #####################################
   ## USER_WORKER #################
   #####################################
-  user_worker:
+  user-worker:
     build:
       context: ./[ads]/maya-odoo-workers
     

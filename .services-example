@@ -7,5 +7,5 @@
 # Array de servicios
 ADSSERVICES=(
   # keycloak-webhook  OBSOLETO NO UTILIZAR
-  maya-odoo-workers
+  user-worker
 )
