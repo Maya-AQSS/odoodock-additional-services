@@ -59,9 +59,9 @@ services:
       - QUEUE_NAME=${USER_WORKER_QUEUE_NAME}    
       - RABBIT_USER=${USER_WORKER_RABBIT_USER}
       - RABBIT_PASS=${USER_WORKER_RABBIT_PASS}
-      
+
     depends_on:
-        odoo:
+        web:
           condition: service_healthy
         rabbitmq:
           condition: service_healthy
