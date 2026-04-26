@@ -38,3 +38,33 @@ services:
       - "traefik.http.routers.keycloak-webhook.rule=Host(`keycloak-webhook.local`)"
       - "traefik.http.routers.keycloak-webhook.entrypoints=web"
       - "traefik.http.services.keycloak-webhook.loadbalancer.server.port=8000"
+      
+      
+  #####################################
+  ## USER_WORKER #################
+  #####################################
+  user_worker:
+    build:
+      context: ./[ads]/maya-odoo-workers
+    
+    restart: unless-stopped
+    
+    environment:
+      - RABBITMQ_HOST=${RABBIT_HOST}
+      - RABBITMQ_PORT=${RABBIT_PORT}
+      - ODOO_URL=${ODOO_URL}
+      - ODOO_DB=${ODOO_DB}
+      - ODOO_USER=${USER_WORKER_ODOO}
+      - ODOO_PASSWORD=${USER_WORKER_ODOO_PASSWORD}
+      - QUEUE_NAME=${USER_WORKER_QUEUE_NAME}    
+      - RABBIT_USER=${USER_WORKER_RABBIT_USER}
+      - RABBIT_PASS=${USER_WORKER_RABBIT_PASS}
+      
+    depends_on:
+        odoo:
+          condition: service_healthy
+        rabbitmq:
+          condition: service_healthy
+        
+    networks:
+      - traefik_network
