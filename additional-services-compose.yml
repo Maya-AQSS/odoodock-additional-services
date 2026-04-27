@@ -59,12 +59,11 @@ services:
       - QUEUE_NAME=${USER_WORKER_QUEUE_NAME}    
       - RABBITMQ_USER=${USER_WORKER_RABBIT_USER}
       - RABBITMQ_PASS=${USER_WORKER_RABBIT_PASS}
+      - RABBITMQ_VHOST=${USER_WORKER_RABBITMQ_VHOST}
 
     depends_on:
-        web:
-          condition: service_healthy
-        rabbitmq:
-          condition: service_healthy
+      - web
+      - rabbitmq
         
     networks:
       - traefik_network

@@ -25,6 +25,8 @@ RABBIT_HOST   = os.environ["RABBITMQ_HOST"]     # rabbitmq
 RABBIT_PORT   = os.environ["RABBITMQ_PORT"]     # 5672
 RABBIT_USER   = os.environ["RABBITMQ_USER"]
 RABBIT_PASS   = os.environ["RABBITMQ_PASS"]
+
+VHOST         = os.environ.get("RABBITMQ_VHOST", "/")
 QUEUE_NAME    = os.environ["QUEUE_NAME"]
 
 
@@ -46,8 +48,8 @@ def connect_odoo():
   )
 
   language_default = languages_output[0]['code']
-  
-  return uid, models
+
+  return uid, models, language_default
 
 
 # Lógica de negocio 
@@ -115,11 +117,11 @@ def upsert_user(models, uid, data, language):
     return "created", user_id
 
 # Callback RabbitMQ
-def make_callback(models, uid):
+def make_callback(models, uid, language_default):
   def on_message(ch, method, properties, body):
     try:
       data = json.loads(body)
-      action, user_id = upsert_user(models, uid, data)
+      action, user_id = upsert_user(models, uid, data, language_default)
       log.info("Usuario %s [id=%s] — %s", data.get("email"), user_id, action)
       ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -138,7 +140,7 @@ def make_callback(models, uid):
 
 # Bucle principal con reconexión automática 
 def run():
-  uid, models = connect_odoo()
+  uid, models, language_default = connect_odoo()
   retry_delay = 5
 
   while True:
@@ -148,6 +150,7 @@ def run():
         host=RABBIT_HOST,
         port=RABBIT_PORT,
         credentials=credentials,
+        virtual_host=VHOST,
         heartbeat=600,
         blocked_connection_timeout=300,
       )
@@ -164,7 +167,7 @@ def run():
       channel.basic_qos(prefetch_count=1)
       channel.basic_consume(
         queue=QUEUE_NAME,
-        on_message_callback=make_callback(models, uid),
+        on_message_callback=make_callback(models, uid, language_default),
       )
 
       log.info("Esperando mensajes en '%s'...", QUEUE_NAME)
