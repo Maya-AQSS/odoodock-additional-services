@@ -18,14 +18,14 @@ log = logging.getLogger(__name__)
 # Configuración desde variables de entorno
 ODOO_URL      = os.environ["ODOO_URL"]        # http://odoo:8069
 ODOO_DB       = os.environ["ODOO_DB"]
-ODOO_USER     = os.environ["USER_WORKER_ODOO"]
-ODOO_PASSWORD = os.environ["USER_WORKER_ODOO_PASSWORD"]
+ODOO_USER     = os.environ["ODOO_USER"]
+ODOO_PASSWORD = os.environ["ODOO_PASSWORD"]
 
-RABBIT_HOST   = os.environ["RABBIT_HOST"]     # rabbitmq
-RABBIT_PORT   = os.environ["RABBIT_PORT"]     # 5672
-RABBIT_USER   = os.environ.get("USER_WORKER_RABBIT_USER", "guest")
-RABBIT_PASS   = os.environ.get("USER_WORKER_RABBIT_PASS", "guest")
-QUEUE_NAME    = os.environ.get("USER_WORKER_QUEUE_NAME", "keycloak_users")
+RABBIT_HOST   = os.environ["RABBITMQ_HOST"]     # rabbitmq
+RABBIT_PORT   = os.environ["RABBITMQ_PORT"]     # 5672
+RABBIT_USER   = os.environ["RABBITMQ_USER"]
+RABBIT_PASS   = os.environ["RABBITMQ_PASS"]
+QUEUE_NAME    = os.environ["QUEUE_NAME"]
 
 
 # Conexión Odoo (se reutiliza entre mensajes) 
