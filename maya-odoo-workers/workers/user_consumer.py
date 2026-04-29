@@ -67,7 +67,9 @@ def upsert_user(models, uid, data, language):
   
   rep_str = data.get("representation", "{}")
   representation = json.loads(rep_str)
-      
+  print(rep_str)
+  attributes= representation.get("attributes")
+    
   email = representation.get("email")
   if not email:
     raise ValueError("Payload sin campo 'email'")
@@ -80,21 +82,29 @@ def upsert_user(models, uid, data, language):
   if not active:
     raise ValueError("Payload sin campo 'enabled'")
   
-  if not representation.get("firstName"):
+  name = representation.get("firstName")
+  if not name:
     raise ValueError("Payload sin campo 'firstName'")
-  
-  if not representation.get("lastName"):
+   
+  surname = representation.get("lastName") 
+  if not surname:
     raise ValueError("Payload sin campo 'lastName'")
-
-  name = representation.get("firstName") + " " + representation.get("lastName")
+  
+  user_type = attributes.get("userType")
+  if not user_type:
+    raise ValueError("Payload sin campo 'userType'")
 
   vals = {
     "name": name,
+    "surname": surname,
     "login":  dni,
     "email":  email,
+    "userType":  'PAS' if  user_type == 'PAS' else 'profesor',
     "company_ids": [1],  # compañias asignadas (solo CEEDCV, la main)
-    "company_id": 1 # compañia por defecto (solo CEEDCV, la main)
+    "company_id": 1 # compañía por defecto (solo CEEDCV, la main)
   }
+  
+  vals_employee = {}
 
   existing = models.execute_kw(
     ODOO_DB, uid, ODOO_PASSWORD,
@@ -120,6 +130,15 @@ def upsert_user(models, uid, data, language):
         "res.users", "create",
         [vals],
     )
+    
+    vals_employee['user_id'] = user_id
+    
+    models.execute_kw(
+      ODOO_DB, uid, ODOO_PASSWORD, 
+      'maya_core.employee', 'create', 
+      [vals_employee])
+    
+    
     return "created", user_id
 
 # Callback RabbitMQ
