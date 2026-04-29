@@ -9,6 +9,8 @@ import time
 import pika
 import xmlrpc.client
 
+import json
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -62,25 +64,29 @@ def upsert_user(models, uid, data, language):
   Si lo hace debe comprobar que el usuario no tiene ninguna dependencia 
   en todo el sistema, tanto odoo como el resto (DMS, etc)
   """
-  email = data.get("email")
+  
+  rep_str = data.get("representation", "{}")
+  representation = json.loads(rep_str)
+      
+  email = representation.get("email")
   if not email:
     raise ValueError("Payload sin campo 'email'")
   
-  dni = data.get("username")
+  dni = representation.get("username")
   if not dni:
     raise ValueError("Payload sin campo 'username'")
 
-  active = data.get("active")
+  active = representation.get("enabled")
   if not active:
-    raise ValueError("Payload sin campo 'active'")
+    raise ValueError("Payload sin campo 'enabled'")
   
-  if not data.get("firstName"):
+  if not representation.get("firstName"):
     raise ValueError("Payload sin campo 'firstName'")
   
-  if not data.get("lastName"):
+  if not representation.get("lastName"):
     raise ValueError("Payload sin campo 'lastName'")
 
-  name = data.get("firstName") + data.get("lastName")
+  name = representation.get("firstName") + " " + representation.get("lastName")
 
   vals = {
     "name": name,
@@ -93,7 +99,7 @@ def upsert_user(models, uid, data, language):
   existing = models.execute_kw(
     ODOO_DB, uid, ODOO_PASSWORD,
     "res.users", "search",
-    [[["login", "=", login]]],
+    [[["login", "=", dni]]],
   )
 
   if existing:
