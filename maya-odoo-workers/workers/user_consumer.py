@@ -99,13 +99,14 @@ def upsert_user(models, uid, data, language):
     "surname": surname,
     "login":  dni,
     "email":  email,
-    "userType":  'PAS' if  user_type == 'PAS' else 'profesor',
     "company_ids": [1],  # compañias asignadas (solo CEEDCV, la main)
     "company_id": 1 # compañía por defecto (solo CEEDCV, la main)
   }
   
-  vals_employee = {}
-
+  vals_employee = {
+    "employee_type": "pas" if user_type[0] == 'PAS' else 'profesor',
+  }
+  
   existing = models.execute_kw(
     ODOO_DB, uid, ODOO_PASSWORD,
     "res.users", "search",
