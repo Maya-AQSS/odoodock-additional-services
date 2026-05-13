@@ -8,4 +8,6 @@
 ADSSERVICES=(
   # keycloak-webhook  OBSOLETO NO UTILIZAR
   user-worker
+  # "jekyll"
+  # "pdf-signature-validator"
 )
