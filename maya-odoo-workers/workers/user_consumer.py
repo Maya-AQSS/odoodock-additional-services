@@ -67,7 +67,7 @@ def upsert_user(models, uid, data, language):
   
   rep_str = data.get("representation", "{}")
   representation = json.loads(rep_str)
-  print(rep_str)
+  print("repre: -> ", rep_str)
   attributes= representation.get("attributes")
     
   email = representation.get("email")
@@ -94,13 +94,25 @@ def upsert_user(models, uid, data, language):
   if not user_type:
     raise ValueError("Payload sin campo 'userType'")
 
+  # id del proveedor keycloak
+  # IMPORTANTE!! el proveedor tiene que tener por nombre Keycloak
+  auth_provider_id = models.execute_kw(
+    ODOO_DB, uid, ODOO_PASSWORD,
+    "auth.oauth.provider", "search",
+    [[["name", "=", 'Keycloak']]], 
+  )
+
+  if not auth_provider_id:
+    raise ValueError("Proveedor de autenticación 'Keycloak' no encontrado") 
+
   vals = {
     "name": name,
     "surname": surname,
     "login":  dni,
     "email":  email,
     "company_ids": [1],  # compañias asignadas (solo CEEDCV, la main)
-    "company_id": 1 # compañía por defecto (solo CEEDCV, la main)
+    "company_id": 1, # compañía por defecto (solo CEEDCV, la main)
+    "auth_provider_id": auth_provider_id
   }
   
   vals_employee = {
@@ -123,8 +135,11 @@ def upsert_user(models, uid, data, language):
     )
     return "updated", existing[0]
   else: # no existe lo creo
+   
     vals['lang'] = language
     vals['active'] = True
+
+    #vals['oauth_uid'] = auth_provider_id
 
     user_id = models.execute_kw(
         ODOO_DB, uid, ODOO_PASSWORD,
@@ -138,7 +153,6 @@ def upsert_user(models, uid, data, language):
       ODOO_DB, uid, ODOO_PASSWORD, 
       'maya_core.employee', 'create', 
       [vals_employee])
-    
     
     return "created", user_id
 
