@@ -59,15 +59,58 @@ def upsert_user(models, uid, data, language):
   """
   Crea o actualiza un usuario en Odoo a partir del payload de Keycloak.
   Devuelve (accion, user_id): accion = 'created' | 'updated' | 'skipped'
-
-  skipped no debería ocurrir. Solo tiene sentido en equivocaciones
-  Si lo hace debe comprobar que el usuario no tiene ninguna dependencia 
-  en todo el sistema, tanto odoo como el resto (DMS, etc)
   """
+  
+  type_operation = data.get("type")
+  
+  if type_operation != "USER-CREATE" and \
+     type_operation != "USER-UPDATE" and \
+     type_operation != "USER-DELETE":
+    return f"UNPROCESSED_OP ({type_operation})", None
+ 
+  # id del proveedor keycloak
+  # IMPORTANTE!! el proveedor tiene que tener por nombre Keycloak
+  auth_provider_id = models.execute_kw(
+    ODOO_DB, uid, ODOO_PASSWORD,
+    "auth.oauth.provider", "search",
+    [[["name", "=", "Keycloak"]]], 
+  )
+  
+  log.info(f"Keycloak provider id (Odoo): {auth_provider_id[0]} ")
+
+  if not auth_provider_id:
+    raise ValueError("Proveedor de autenticación 'Keycloak' no encontrado") 
+
+  resource_path = data.get("resourcePath")
+  keycloak_user_id = resource_path.removeprefix("users/")
+
+  log.info("Keycloak User ID = %s", keycloak_user_id)
+  
+  # en caso de borrado, desactiva al usuario de odoo
+  if type_operation == "USER-DELETE":
+    existing = models.execute_kw(
+      ODOO_DB, uid, ODOO_PASSWORD,
+      "res.users", "search",
+      [[["oauth_uid", "=", keycloak_user_id],
+        ["oauth_provider_id", "=", auth_provider_id[0]]]],
+    )
+  
+    if existing:
+      vals = {}
+      vals['active'] = False
+    
+      models.execute_kw(
+        ODOO_DB, uid, ODOO_PASSWORD,
+        "res.users", "write",
+        [existing, vals],
+      )
+      return "disabled", existing[0], keycloak_user_id
+    else:
+      raise ValueError("El usuario no existe en Odoo")
   
   rep_str = data.get("representation", "{}")
   representation = json.loads(rep_str)
-  print("repre: -> ", rep_str)
+  # print("repre: -> ", rep_str)
   attributes= representation.get("attributes")
     
   email = representation.get("email")
@@ -94,25 +137,15 @@ def upsert_user(models, uid, data, language):
   if not user_type:
     raise ValueError("Payload sin campo 'userType'")
 
-  # id del proveedor keycloak
-  # IMPORTANTE!! el proveedor tiene que tener por nombre Keycloak
-  auth_provider_id = models.execute_kw(
-    ODOO_DB, uid, ODOO_PASSWORD,
-    "auth.oauth.provider", "search",
-    [[["name", "=", 'Keycloak']]], 
-  )
-
-  if not auth_provider_id:
-    raise ValueError("Proveedor de autenticación 'Keycloak' no encontrado") 
-
   vals = {
     "name": name,
     "surname": surname,
-    "login":  dni,
+    "login":  dni.upper(),
     "email":  email,
     "company_ids": [1],  # compañias asignadas (solo CEEDCV, la main)
     "company_id": 1, # compañía por defecto (solo CEEDCV, la main)
-    "auth_provider_id": auth_provider_id
+    "oauth_provider_id": auth_provider_id[0],
+    "oauth_uid": keycloak_user_id 
   }
   
   vals_employee = {
@@ -122,7 +155,7 @@ def upsert_user(models, uid, data, language):
   existing = models.execute_kw(
     ODOO_DB, uid, ODOO_PASSWORD,
     "res.users", "search",
-    [[["login", "=", dni]]],
+    [[["login", "=ilike", dni]]],
   )
 
   if existing:
@@ -133,13 +166,13 @@ def upsert_user(models, uid, data, language):
         "res.users", "write",
         [existing, vals],
     )
-    return "updated", existing[0]
+    return "updated", existing[0], dni
+  
   else: # no existe lo creo
+    print("Usuario a insertar:", vals )
    
     vals['lang'] = language
     vals['active'] = True
-
-    #vals['oauth_uid'] = auth_provider_id
 
     user_id = models.execute_kw(
         ODOO_DB, uid, ODOO_PASSWORD,
@@ -154,15 +187,15 @@ def upsert_user(models, uid, data, language):
       'maya_core.employee', 'create', 
       [vals_employee])
     
-    return "created", user_id
+    return "created", user_id, dni
 
 # Callback RabbitMQ
 def make_callback(models, uid, language_default):
   def on_message(ch, method, properties, body):
     try:
       data = json.loads(body)
-      action, user_id = upsert_user(models, uid, data, language_default)
-      log.info("Usuario %s [id=%s] — %s", data.get("email"), user_id, action)
+      action, user_id, user = upsert_user(models, uid, data, language_default)
+      log.info("Usuario %s [id=%s] — %s", user, user_id, action)
       ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except (ValueError, json.JSONDecodeError) as e:
