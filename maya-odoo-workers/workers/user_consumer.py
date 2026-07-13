@@ -111,7 +111,7 @@ def upsert_user(models, uid, data, language):
   rep_str = data.get("representation", "{}")
   representation = json.loads(rep_str)
   # print("repre: -> ", rep_str)
-  attributes= representation.get("attributes")
+  attributes= representation.get("attributes") or {}
     
   email = representation.get("email")
   if not email:
